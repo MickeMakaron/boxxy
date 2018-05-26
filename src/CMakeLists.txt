@@ -10,6 +10,9 @@ enable_testing()
 
 add_executable(boxxy main.cpp)
 
+set_property(TARGET boxxy PROPERTY CXX_STANDARD_REQUIRED 17)
+set_property(TARGET boxxy PROPERTY CXX_STANDARD 17)
+
 target_link_libraries(boxxy SDL2 glew)
 
 
