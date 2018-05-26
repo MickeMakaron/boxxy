@@ -1,3 +1,6 @@
 [submodule "src/deps/sdl2"]
 	path = src/deps/sdl2
 	url = https://github.com/spurious/SDL-mirror
+[submodule "src/deps/glew"]
+	path = src/deps/glew
+	url = https://github.com/ssp2018devops/glew

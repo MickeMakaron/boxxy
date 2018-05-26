@@ -10,7 +10,7 @@ enable_testing()
 
 add_executable(boxxy main.cpp)
 
-target_link_libraries(boxxy SDL2)
+target_link_libraries(boxxy SDL2 glew)
 
 
 add_subdirectory(deps)
