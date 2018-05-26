@@ -1,0 +1,13 @@
+# Hur vill vi designa en GUI?
+* Designa i verktyget.
+* Designande i verktyget uppdaterar spelet i realtid.
+* Verktyget kan exportera enkel data som former, bilder, färger, callbacks etc. till fil som laddas in av spelet i release.
+* Verktyget kan köras offline och realtid.
+
+# Vad ska man kunna göra i verktyget?
+* Skapa former, e.g. rektanglar.
+* Placera formerna smidigt med snaps, grids, specifika värden etc.
+* Man jobbar med fönster/element.
+* GUI-element är former.
+* Koppla bilder, färger, callbacks till element.
+* Textfält med statisk/dynamisk text. Rendera text.
