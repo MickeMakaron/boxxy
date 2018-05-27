@@ -217,7 +217,7 @@ namespace geom
     float x;
     float y;
   };
-  static_assert(std::is_pod<Vector2>::value);
+  static_assert(std::is_trivial<Vector2>::value);
 
   struct Vector3
   {
@@ -225,7 +225,7 @@ namespace geom
     float y;
     float z;
   };
-  static_assert(std::is_pod<Vector3>::value);
+  static_assert(std::is_trivial<Vector3>::value);
   
 
   struct Vector4
@@ -235,7 +235,7 @@ namespace geom
     float z;
     float w;
   };
-  static_assert(std::is_pod<Vector4>::value);
+  static_assert(std::is_trivial<Vector4>::value);
   
 
 
@@ -450,7 +450,9 @@ namespace geom
   };
 }
 
-namespace graph2d
+
+// API declaration
+namespace graph2
 {
   using Vector2 = geom::Vector2;
   using Vector3 = geom::Vector3;
@@ -459,95 +461,38 @@ namespace graph2d
 
   struct Color
   {
-    // Color()
-    // {
-
-    // }
-
-    // Color(unsigned char rr, 
-    //       unsigned char gg, 
-    //       unsigned char bb, 
-    //       unsigned char aa = 255)
-    // : r(rr)
-    // , g(gg)
-    // , b(bb)
-    // , a(aa)
-    // {
-
-    // }
-
     unsigned char r;
     unsigned char g;
     unsigned char b;
     unsigned char a;
   };
-  static_assert(std::is_pod<Color>::value);
-
-
-
 
   struct Point
   {
     Vector2 position;
     Color color;
   };
-  static_assert(std::is_pod<Point>::value);
-
-  
 
   struct Triangle : public std::array<Point, 3>
   {
-    Point& a()
-    {
-      return operator[](0);
-    }
+    Point& a();
+    Point& b();
+    Point& c();
 
-    Point& b()
-    {
-      return operator[](1);
-    }
-
-    Point& c()
-    {
-      return operator[](2);
-    }
-
-    Triangle& operator=(const std::array<Vector2, 3>& positions)
-    {
-      for(size_t i = 0; i < size(); i++)
-      {
-        operator[](i).position = positions[i];
-      }
-    }
+    Triangle& operator=(const std::array<Vector2, 3>& positions);
   };
-  static_assert(std::is_pod<Triangle>::value);
 
   struct Rect : public std::array<Point, 4>
   {
-    Point& top_left()
-    {
-      return operator[](0);
-    }
-
-    Point& top_right()
-    {
-      return operator[](1);
-    }
-
-    Point& bot_left()
-    {
-      return operator[](2);
-    }
-
-    Point& bot_right()
-    {
-      return operator[](3);
-    }
+    Point& top_left();
+    Point& top_right();
+    Point& bot_left();
+    Point& bot_right();
   };
-  static_assert(std::is_pod<Rect>::value);
 
   struct Line : public std::vector<Point>
   {
+    float thickness;
   };
   
   struct DrawConfig
@@ -557,263 +502,363 @@ namespace graph2d
     Vector4 color_multiplier;
   };
 
+  class Token;
+  class Graphic
+  {
+    public:
+      Graphic();
+      ~Graphic();
+      DrawConfig& config() const;
+      const DrawConfig& config_readonly() const;
+      void attach_config(const Graphic& to) const;
+      void detach_config() const;
+      void draw() const;
+
+    protected:
+      const Token& token() const;
+
+    private:
+      const Token& _token;
+  };
+
+  class TriangleGraphic : public Graphic
+  {
+    public:
+      Triangle& triangle();
+  };
+
+  class RectGraphic : public Graphic
+  {
+    public:
+      Rect& rect();
+  };
+
+  class LineGraphic : public Graphic
+  {
+    public:
+      Line& line();
+  };
+
+  std::vector<TriangleGraphic> create_triangle_group();
+  std::vector<RectGraphic> create_rect_group();
+  std::vector<LineGraphic> create_line_group();
+}
+
+
+class Transformable2
+{
+  public:
+
+    void move(float x, float y)
+    {
+
+    }
+
+    void scale(float amount)
+    {
+
+    }
+
+  private:
+    geom::Transform2 _transform;
+};
+
+class Rect2 : public Transformable2
+{
+  public:
+    void set_center(float x, float y)
+    {
+
+    }
+
+    void set_top_left(float x, float y)
+    {
+
+    }
+
+
+
+  private:
+};
+
+// API implementation
+namespace graph2
+{
+  static_assert(std::is_trivial<Color>::value);
+  static_assert(std::is_trivial<Point>::value);
+  static_assert(std::is_trivial<Triangle>::value);
+  static_assert(std::is_trivial<Rect>::value);
+  static_assert(std::is_trivial<DrawConfig>::value);
+  
+  // Triangle
+  Point& Triangle::a()
+  {
+    return operator[](0);
+  }
+
+  Point& Triangle::b()
+  {
+    return operator[](1);
+  }
+
+  Point& Triangle::c()
+  {
+    return operator[](2);
+  }
+
+  Triangle& Triangle::operator=(const std::array<Vector2, 3>& positions)
+  {
+    for(size_t i = 0; i < size(); i++)
+    {
+      operator[](i).position = positions[i];
+    }
+  }
+
+  // Rect
+  Point& Rect::top_left()
+  {
+    return operator[](0);
+  }
+
+  Point& Rect::top_right()
+  {
+    return operator[](1);
+  }
+
+  Point& Rect::bot_left()
+  {
+    return operator[](2);
+  }
+
+  Point& Rect::bot_right()
+  {
+    return operator[](3);
+  }
+  
+
   class Id
   {
     public:
-      Id()
-      {
-        static std::atomic<uint64_t> id_pool = 0;
-        _id = id_pool++;
-      }
+      Id();
 
 
     private:
       uint64_t _id;
   };
 
-  class Graphic
+  class Token
   {
-    public:
-      DrawConfig& config()
-      {
-        return _config;
-      }
-
-      void draw() const
-      {
-
-      }
-
-    protected:
-      void set_dirty()
-      {
-        _version++;
-      }
-
-      //virtual void draw_internal() const = 0;
-
     private:
-      DrawConfig _config;
       Id _id;
       uint64_t _version;
   };
 
-  class TriangleGraphic : public Graphic
+
+  // Id
+  Id::Id()
   {
-    public:
-      Triangle& triangle()
-      {
-        set_dirty();
-        return _triangle;
-      }
+    static std::atomic<uint64_t> id_pool = 0;
+    _id = id_pool++;
+  }
 
-    private:
-      Triangle _triangle;
-  };
 
-  class RectGraphic : public Graphic
+  DrawConfig& get_config(const Token& token)
   {
-    public:
-      Rect& rect()
-      {
-        set_dirty();
-        return _rect;
-      }
+    static DrawConfig config;
+    return config;
+  }
 
-
-    private:
-      Rect _rect;
-  };
-
-  class LineGraphic : public Graphic
+  const DrawConfig& get_config_readonly(const Token& token)
   {
-    public:
-      Line& line()
-      {
-        set_dirty();
-        return _line;
-      }
+    return get_config(token);
+  }
 
-    private:
-      Line _line;
-  };
+  Triangle& get_triangle(const Token& token)
+  {
+    static Triangle triangle;
+    return triangle;
+  }
 
-  // class Triangle : public Drawable
-  // {
-  //   public:
-  //     Point& operator[](size_t index) override
-  //     {
-  //       return _points[index];
-  //     }
+  const Triangle& get_triangle_readonly(const Token& token)
+  {
+    return get_triangle(token);
+  }
 
-  //     void draw() const override
-  //     {
-        
-  //     }
+  Rect& get_rect(const Token& token)
+  {
+    static Rect rect;
+    return rect;
+  }
 
-  //     size_t size() const override
-  //     {
-  //       return _points.size();
-  //     }
+  const Rect& get_rect_readonly(const Token& token)
+  {
+    return get_rect(token);
+  }
 
+  Line& get_line(const Token& token)
+  {
+    static Line line;
+    return line;
+  }
 
-  //   private:
-  //     std::array<Point, geom::Triangle2::SIZE> _points;
-  // };
-  
-  // class Rect : public Drawable
-  // {
-  //   public:
-  //     Point& top_left()
-  //     {
-  //       return operator[](0);
-  //     }
-  //     Point& top_right()
-  //     {
-  //       return operator[](1);
-  //     }
-  //     Point& bot_left()
-  //     {
-  //       return operator[](2);
-  //     }
-  //     Point& bot_right()
-  //     {
-  //       return operator[](3);
-  //     }
+  const Line& get_line_readonly(const Token& token)
+  {
+    return get_line(token);
+  }
 
-  //     Point& operator[](size_t index) override
-  //     {
-  //       return _points[index];
-  //     }
+  void draw(const Token& token)
+  {
 
-  //     void draw() const override
-  //     {
+  }
 
-  //     }
+  void draw(const Triangle& triangle, const DrawConfig& config)
+  {
 
-      
+  }
 
-  //     size_t size() const override
-  //     {
-  //       return _points.size();
-  //     }
+  void draw(const Rect& rect, const DrawConfig& config)
+  {
 
+  }
 
-  //   private:
-  //     std::array<Point, geom::Rect2::SIZE> _points;
-  // };
+  void draw(const Line& line, const DrawConfig& config)
+  {
+
+  }
+
+  void attach_config(const Token& from, const Token& to)
+  {
+    
+  }
+
+  void detach_config(const Token& attached)
+  {
+
+  }
+
+  const Token& take_token()
+  {
+    static Token token;
+    return token;
+  }
+
+  void return_token(const Token& token)
+  {
+
+  }
+
   
 
-  // class Line : public Drawable
-  // {
-  //   public:
-  //     Line()
-  //     {
-
-  //     }
-
-  //     Line(const geom::Line2& other)
-  //     {
-  //       resize(other.size());
-  //     }
-
-  //     Point& operator[](size_t index)
-  //     {
-  //       return {_positions[index], _colors[index]};
-  //     }
-      
-  //     Point& front()
-  //     {
-  //       return {_positions.front(), _colors.front()};
-  //     }
-
-  //     Point& back()
-  //     {
-  //       return {_positions.back(), _colors.back()};
-  //     }
-
-  //     void push_back(const Point& point)
-  //     {
-  //       _positions.push_back(point.position);
-  //       _colors.push_back(point.color);
-  //     }
-
-  //     void insert(size_t index, const Point& point)
-  //     {
-  //       _positions.insert(index, point.position);
-  //       _colors.insert(_colors.begin() + index, point.color);
-  //     }
-
-  //     void push_back(const PointRef& point)
-  //     {
-  //       _positions.push_back(point.position);
-  //       _colors.push_back(point.color);
-  //     }
-
-  //     void insert(size_t index, const PointRef& point)
-  //     {
-  //       _positions.insert(index, point.position);
-  //       _colors.insert(_colors.begin() + index, point.color);
-  //     }
-
-      
-
-  //     void draw() const override
-  //     {
-      
-  //     }
-
-  //     size_t size() const override
-  //     {
-  //       return _colors.size();
-  //     }
-
-  //     float& thickness()
-  //     {
-  //       return _thickness;
-  //     }
-
-  //     void resize(size_t size)
-  //     {
-  //       _positions.resize(size);
-  //       _colors.resize(size);
-  //     }
-
-  //     void reserve(size_t size)
-  //     {
-  //       _positions.reserve(size);
-  //       _colors.reserve(size);
-  //     }
-
-  //   private:
-  //     geom::Line2 _positions;
-  //     std::vector<Color> _colors;
-  //     float _thickness;
-  // };
-
-  void draw(const Graphic& graphic)
+  // Graphic
+  Graphic::Graphic()
+  : _token(take_token())
   {
-    graphic.draw();
+
+  }
+
+  Graphic::~Graphic()
+  {
+    return_token(_token);
+  }
+
+  DrawConfig& Graphic::config() const
+  {
+    return get_config(_token);
+  }
+
+  const DrawConfig& Graphic::config_readonly() const
+  {
+    return get_config_readonly(_token);
+  }
+
+  void Graphic::attach_config(const Graphic& to) const
+  {
+    graph2::attach_config(_token, to._token);
+  }
+
+  void Graphic::detach_config() const
+  {
+    graph2::detach_config(_token);
+  }
+
+  void Graphic::draw() const
+  {
+    graph2::draw(_token);
+  }
+
+  const Token& Graphic::token() const
+  {
+    return _token;
+  }
+
+  // Graphics
+  Triangle& TriangleGraphic::triangle()
+  {
+    return get_triangle(token());
+  }
+
+  Rect& RectGraphic::rect()
+  {
+    return get_rect(token());
+  }
+
+  Line& LineGraphic::line()
+  {
+    return get_line(token());
+  }
+
+  std::vector<TriangleGraphic> create_triangle_group()
+  {
+    return {};
+  }
+
+  std::vector<RectGraphic> create_rect_group()
+  {
+    return {};
+  }
+
+  std::vector<LineGraphic> create_line_group()
+  {
+    return {};
   }
 }
 
+namespace gui2
+{
+  class Button : public Rect2
+  {
+    public:
+
+  };
+}
 
 int main(int, char**) 
 {
-  graph2d::TriangleGraphic triangle;
+  gui2::Button b;
+  b.set_center(50, 50);
+  // b.set_size(10, 10);
+  b.set_top_left(20, 20);
+  // b.set_bot_right(30, 30);
+  b.move(10, 10);
+  b.scale(10.f);
+
+
+  graph2::TriangleGraphic triangle;
   triangle.triangle() = 
   {
-    graph2d::Vector2({-0.5f, -0.5f}),
-    graph2d::Vector2({0.f, 0.5f}),
-    graph2d::Vector2({0.5f, -0.5f}),
+    graph2::Vector2({-0.5f, -0.5f}),
+    graph2::Vector2({0.f, 0.5f}),
+    graph2::Vector2({0.5f, -0.5f}),
   };
-  graph2d::Color red = {255, 0, 0, 255};
+  graph2::Color red = {255, 0, 0, 255};
   triangle.triangle() =
   {
-    graph2d::Point({{-0.5f, -0.5f}, red}),
-    graph2d::Point({{0.f, 0.5f}, red}),
-    graph2d::Point({{0.5f, -0.5f}, red}),
+    graph2::Point({{-0.5f, -0.5f}, red}),
+    graph2::Point({{0.f, 0.5f}, red}),
+    graph2::Point({{0.5f, -0.5f}, red}),
   };
+
+  
 
   triangle.config().transform.scale(5.f);
 
@@ -821,52 +866,52 @@ int main(int, char**)
   triangle.draw();
 
 
-  graph2d::LineGraphic line;
-  graph2d::Line& l = line.line();
+  graph2::LineGraphic line;
+  graph2::Line& l = line.line();
   l.resize(50);
   for(size_t i = 0; i < l.size(); i++)
   {
-    graph2d::Point p;
+    graph2::Point p;
     p.color.r = i;
     p.position.x = i * 2;
     l[i] = p;
   }
 
-  graph2d::DrawConfig& conf = line.config();
+  graph2::DrawConfig& conf = line.config();
   conf.transform.scale(5.f);
   conf.layer = 50;
 
   line.draw();
   
-  // graph2d::Triangle t;
+  // graph2::Triangle t;
   // t[0].position.y = 1;
   // t[2].color.g = 0;
   // t.draw();
 
 
-  // graph2d::Rect r;
-  // r[0].color = graph2d::Color();
-  // r[3].position = graph2d::Vector2();
+  // graph2::Rect r;
+  // r[0].color = graph2::Color();
+  // r[3].position = graph2::Vector2();
   // r.top_left().position = r.top_right().position;
   // r.transform().scale(5.f);
 
   // r.draw();
 
 
-  // graph2d::Line l;
+  // graph2::Line l;
   // l.resize(50);
-  // l.push_back({graph2d::Vector2(), graph2d::Color()});
+  // l.push_back({graph2::Vector2(), graph2::Color()});
   // l.insert(0, l.back());
   // l.front().position.x += 5;
-  // l.back().color = graph2d::Color();
-  // l[0].position = graph2d::Vector2();
+  // l.back().color = graph2::Color();
+  // l[0].position = graph2::Vector2();
 
   // for(size_t i = 10; i < l.size(); i++)
   // {
   //   l[i].position.y = i;
   // }
 
-  // l.colorize(graph2d::Color());
+  // l.colorize(graph2::Color());
   // l.draw();
 
 
