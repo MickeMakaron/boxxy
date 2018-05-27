@@ -202,19 +202,41 @@ namespace geom
 {
   struct Vector2
   {
-      float x;
-      float y;
-  };
+    // Vector2()
+    // {
 
-  struct Vector3 : public Vector2
-  {
-      float z;
-  };
+    // }
 
-  struct Vector4 : public Vector3
-  {
-      float w;
+    // Vector2(float xx, float yy)
+    // : x(xx)
+    // , y(yy)
+    // {
+
+    // }
+
+    float x;
+    float y;
   };
+  static_assert(std::is_pod<Vector2>::value);
+
+  struct Vector3
+  {
+    float x;
+    float y;
+    float z;
+  };
+  static_assert(std::is_pod<Vector3>::value);
+  
+
+  struct Vector4
+  {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  static_assert(std::is_pod<Vector4>::value);
+  
 
 
   class Transform2
@@ -437,11 +459,29 @@ namespace graph2d
 
   struct Color
   {
+    // Color()
+    // {
+
+    // }
+
+    // Color(unsigned char rr, 
+    //       unsigned char gg, 
+    //       unsigned char bb, 
+    //       unsigned char aa = 255)
+    // : r(rr)
+    // , g(gg)
+    // , b(bb)
+    // , a(aa)
+    // {
+
+    // }
+
     unsigned char r;
     unsigned char g;
     unsigned char b;
     unsigned char a;
   };
+  static_assert(std::is_pod<Color>::value);
 
 
 
@@ -472,6 +512,13 @@ namespace graph2d
       return operator[](2);
     }
 
+    Triangle& operator=(const std::array<Vector2, 3>& positions)
+    {
+      for(size_t i = 0; i < size(); i++)
+      {
+        operator[](i).position = positions[i];
+      }
+    }
   };
   static_assert(std::is_pod<Triangle>::value);
 
@@ -753,7 +800,43 @@ namespace graph2d
 
 int main(int, char**) 
 {
+  graph2d::TriangleGraphic triangle;
+  triangle.triangle() = 
+  {
+    graph2d::Vector2({-0.5f, -0.5f}),
+    graph2d::Vector2({0.f, 0.5f}),
+    graph2d::Vector2({0.5f, -0.5f}),
+  };
+  graph2d::Color red = {255, 0, 0, 255};
+  triangle.triangle() =
+  {
+    graph2d::Point({{-0.5f, -0.5f}, red}),
+    graph2d::Point({{0.f, 0.5f}, red}),
+    graph2d::Point({{0.5f, -0.5f}, red}),
+  };
 
+  triangle.config().transform.scale(5.f);
+
+
+  triangle.draw();
+
+
+  graph2d::LineGraphic line;
+  graph2d::Line& l = line.line();
+  l.resize(50);
+  for(size_t i = 0; i < l.size(); i++)
+  {
+    graph2d::Point p;
+    p.color.r = i;
+    p.position.x = i * 2;
+    l[i] = p;
+  }
+
+  graph2d::DrawConfig& conf = line.config();
+  conf.transform.scale(5.f);
+  conf.layer = 50;
+
+  line.draw();
   
   // graph2d::Triangle t;
   // t[0].position.y = 1;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-execute_process(COMMAND git submodule update --init --recursive)
+#execute_process(COMMAND git submodule update --init --recursive)
 
 # sdl2 #########################
 add_subdirectory(sdl2)
