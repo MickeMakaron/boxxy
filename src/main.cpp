@@ -3,6 +3,7 @@
 #include <sstream>
 #include <random>
 #include <array>
+#include <atomic>
  
 
 #include <GL/glew.h>
@@ -430,6 +431,9 @@ namespace geom
 namespace graph2d
 {
   using Vector2 = geom::Vector2;
+  using Vector3 = geom::Vector3;
+  using Vector4 = geom::Vector4;
+  using Transform = geom::Transform2;
 
   struct Color
   {
@@ -447,235 +451,340 @@ namespace graph2d
     Vector2 position;
     Color color;
   };
-  struct PointRef
+  static_assert(std::is_pod<Point>::value);
+
+  
+
+  struct Triangle : public std::array<Point, 3>
   {
-    Vector2& position;
-    Color& color;
+    Point& a()
+    {
+      return operator[](0);
+    }
+
+    Point& b()
+    {
+      return operator[](1);
+    }
+
+    Point& c()
+    {
+      return operator[](2);
+    }
+
+  };
+  static_assert(std::is_pod<Triangle>::value);
+
+  struct Rect : public std::array<Point, 4>
+  {
+    Point& top_left()
+    {
+      return operator[](0);
+    }
+
+    Point& top_right()
+    {
+      return operator[](1);
+    }
+
+    Point& bot_left()
+    {
+      return operator[](2);
+    }
+
+    Point& bot_right()
+    {
+      return operator[](3);
+    }
+  };
+  static_assert(std::is_pod<Rect>::value);
+
+  struct Line : public std::vector<Point>
+  {
+  };
+  
+  struct DrawConfig
+  {
+    Transform transform;
+    uint16_t layer;
+    Vector4 color_multiplier;
   };
 
-
-  class Drawable : public geom::Transformable2
+  class Id
   {
     public:
-      virtual ~Drawable()
+      Id()
+      {
+        static std::atomic<uint64_t> id_pool = 0;
+        _id = id_pool++;
+      }
+
+
+    private:
+      uint64_t _id;
+  };
+
+  class Graphic
+  {
+    public:
+      DrawConfig& config()
+      {
+        return _config;
+      }
+
+      void draw() const
       {
 
       }
 
-      virtual void draw() const = 0;
-      void colorize(const Color& color)
+    protected:
+      void set_dirty()
       {
-        for(size_t i = 0; i < size(); i++)
-        {
-          operator[](i).color = color;
-        }
+        _version++;
       }
 
-      virtual PointRef operator[](size_t index) = 0;
-      virtual size_t size() const = 0;
-    
-      uint16_t& layer()
+      //virtual void draw_internal() const = 0;
+
+    private:
+      DrawConfig _config;
+      Id _id;
+      uint64_t _version;
+  };
+
+  class TriangleGraphic : public Graphic
+  {
+    public:
+      Triangle& triangle()
       {
-        return _layer;
+        set_dirty();
+        return _triangle;
       }
 
     private:
-      uint16_t _layer;
+      Triangle _triangle;
   };
 
-  class Triangle : public Drawable
+  class RectGraphic : public Graphic
   {
     public:
-      PointRef operator[](size_t index) override
+      Rect& rect()
       {
-        return {_positions[index], _colors[index]};
+        set_dirty();
+        return _rect;
       }
 
-      void draw() const override
+
+    private:
+      Rect _rect;
+  };
+
+  class LineGraphic : public Graphic
+  {
+    public:
+      Line& line()
       {
+        set_dirty();
+        return _line;
+      }
+
+    private:
+      Line _line;
+  };
+
+  // class Triangle : public Drawable
+  // {
+  //   public:
+  //     Point& operator[](size_t index) override
+  //     {
+  //       return _points[index];
+  //     }
+
+  //     void draw() const override
+  //     {
         
-      }
+  //     }
 
-      size_t size() const override
-      {
-        return _positions.size();
-      }
+  //     size_t size() const override
+  //     {
+  //       return _points.size();
+  //     }
 
 
-    private:
-      geom::Triangle2 _positions;
-      std::array<Color, geom::Triangle2::SIZE> _colors;
-  };
+  //   private:
+  //     std::array<Point, geom::Triangle2::SIZE> _points;
+  // };
   
-  class Rect : public Drawable
-  {
-    public:
-      PointRef top_left()
-      {
-        return operator[](0);
-      }
-      PointRef top_right()
-      {
-        return operator[](1);
-      }
-      PointRef bot_left()
-      {
-        return operator[](2);
-      }
-      PointRef bot_right()
-      {
-        return operator[](3);
-      }
+  // class Rect : public Drawable
+  // {
+  //   public:
+  //     Point& top_left()
+  //     {
+  //       return operator[](0);
+  //     }
+  //     Point& top_right()
+  //     {
+  //       return operator[](1);
+  //     }
+  //     Point& bot_left()
+  //     {
+  //       return operator[](2);
+  //     }
+  //     Point& bot_right()
+  //     {
+  //       return operator[](3);
+  //     }
 
-      PointRef operator[](size_t index) override
-      {
-        return {_positions[index], _colors[index]};
-      }
+  //     Point& operator[](size_t index) override
+  //     {
+  //       return _points[index];
+  //     }
 
-      void draw() const override
-      {
+  //     void draw() const override
+  //     {
 
-      }
+  //     }
 
       
 
-      size_t size() const override
-      {
-        return _positions.size();
-      }
+  //     size_t size() const override
+  //     {
+  //       return _points.size();
+  //     }
 
 
-    private:
-      geom::Rect2 _positions;
-      std::array<Color, geom::Rect2::SIZE> _colors;
-  };
+  //   private:
+  //     std::array<Point, geom::Rect2::SIZE> _points;
+  // };
   
 
-  class Line : public Drawable
+  // class Line : public Drawable
+  // {
+  //   public:
+  //     Line()
+  //     {
+
+  //     }
+
+  //     Line(const geom::Line2& other)
+  //     {
+  //       resize(other.size());
+  //     }
+
+  //     Point& operator[](size_t index)
+  //     {
+  //       return {_positions[index], _colors[index]};
+  //     }
+      
+  //     Point& front()
+  //     {
+  //       return {_positions.front(), _colors.front()};
+  //     }
+
+  //     Point& back()
+  //     {
+  //       return {_positions.back(), _colors.back()};
+  //     }
+
+  //     void push_back(const Point& point)
+  //     {
+  //       _positions.push_back(point.position);
+  //       _colors.push_back(point.color);
+  //     }
+
+  //     void insert(size_t index, const Point& point)
+  //     {
+  //       _positions.insert(index, point.position);
+  //       _colors.insert(_colors.begin() + index, point.color);
+  //     }
+
+  //     void push_back(const PointRef& point)
+  //     {
+  //       _positions.push_back(point.position);
+  //       _colors.push_back(point.color);
+  //     }
+
+  //     void insert(size_t index, const PointRef& point)
+  //     {
+  //       _positions.insert(index, point.position);
+  //       _colors.insert(_colors.begin() + index, point.color);
+  //     }
+
+      
+
+  //     void draw() const override
+  //     {
+      
+  //     }
+
+  //     size_t size() const override
+  //     {
+  //       return _colors.size();
+  //     }
+
+  //     float& thickness()
+  //     {
+  //       return _thickness;
+  //     }
+
+  //     void resize(size_t size)
+  //     {
+  //       _positions.resize(size);
+  //       _colors.resize(size);
+  //     }
+
+  //     void reserve(size_t size)
+  //     {
+  //       _positions.reserve(size);
+  //       _colors.reserve(size);
+  //     }
+
+  //   private:
+  //     geom::Line2 _positions;
+  //     std::vector<Color> _colors;
+  //     float _thickness;
+  // };
+
+  void draw(const Graphic& graphic)
   {
-    public:
-      Line()
-      {
-
-      }
-
-      Line(const geom::Line2& other)
-      {
-        resize(other.size());
-      }
-
-      PointRef operator[](size_t index)
-      {
-        return {_positions[index], _colors[index]};
-      }
-      
-      PointRef front()
-      {
-        return {_positions.front(), _colors.front()};
-      }
-
-      PointRef back()
-      {
-        return {_positions.back(), _colors.back()};
-      }
-
-      void push_back(const Point& point)
-      {
-        _positions.push_back(point.position);
-        _colors.push_back(point.color);
-      }
-
-      void insert(size_t index, const Point& point)
-      {
-        _positions.insert(index, point.position);
-        _colors.insert(_colors.begin() + index, point.color);
-      }
-
-      void push_back(const PointRef& point)
-      {
-        _positions.push_back(point.position);
-        _colors.push_back(point.color);
-      }
-
-      void insert(size_t index, const PointRef& point)
-      {
-        _positions.insert(index, point.position);
-        _colors.insert(_colors.begin() + index, point.color);
-      }
-
-      
-
-      void draw() const override
-      {
-      
-      }
-
-      size_t size() const override
-      {
-        return _colors.size();
-      }
-
-      float& thickness()
-      {
-        return _thickness;
-      }
-
-      void resize(size_t size)
-      {
-        _positions.resize(size);
-        _colors.resize(size);
-      }
-
-      void reserve(size_t size)
-      {
-        _positions.reserve(size);
-        _colors.reserve(size);
-      }
-
-    private:
-      geom::Line2 _positions;
-      std::vector<Color> _colors;
-      float _thickness;
-  };
-
-  void draw(const Drawable& drawable)
-  {
-    drawable.draw();
+    graphic.draw();
   }
 }
 
 
 int main(int, char**) 
 {
-  graph2d::Triangle t;
-  t[0].position.y = 1;
-  t[2].color.g = 0;
-  t.draw();
 
-  graph2d::Rect r;
-  r[0].color = graph2d::Color();
-  r[3].position = graph2d::Vector2();
-  r.top_left().position = r.top_right().position;
-  r.transform().scale(5.f);
-
-  r.draw();
+  
+  // graph2d::Triangle t;
+  // t[0].position.y = 1;
+  // t[2].color.g = 0;
+  // t.draw();
 
 
-  graph2d::Line l;
-  l.resize(50);
-  l.push_back({graph2d::Vector2(), graph2d::Color()});
-  l.insert(0, l.back());
-  l.front().position.x += 5;
-  l.back().color = graph2d::Color();
-  l[0].position = graph2d::Vector2();
+  // graph2d::Rect r;
+  // r[0].color = graph2d::Color();
+  // r[3].position = graph2d::Vector2();
+  // r.top_left().position = r.top_right().position;
+  // r.transform().scale(5.f);
 
-  for(size_t i = 10; i < l.size(); i++)
-  {
-    l[i].position.y = i;
-  }
+  // r.draw();
 
-  l.colorize(graph2d::Color());
-  l.draw();
+
+  // graph2d::Line l;
+  // l.resize(50);
+  // l.push_back({graph2d::Vector2(), graph2d::Color()});
+  // l.insert(0, l.back());
+  // l.front().position.x += 5;
+  // l.back().color = graph2d::Color();
+  // l[0].position = graph2d::Vector2();
+
+  // for(size_t i = 10; i < l.size(); i++)
+  // {
+  //   l[i].position.y = i;
+  // }
+
+  // l.colorize(graph2d::Color());
+  // l.draw();
 
 
   
