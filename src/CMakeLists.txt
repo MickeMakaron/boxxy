@@ -15,5 +15,7 @@ set_property(TARGET boxxy PROPERTY CXX_STANDARD 17)
 
 target_link_libraries(boxxy SDL2 glew)
 
+target_compile_options(boxxy PUBLIC $<$<CONFIG:Release>:-o2>)
+
 
 add_subdirectory(deps)

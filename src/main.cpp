@@ -4,7 +4,7 @@
 #include <random>
 #include <array>
 #include <atomic>
- 
+#include <chrono> 
 
 #include <GL/glew.h>
 #include <SDL.h>
@@ -944,7 +944,7 @@ int main(int, char**)
                        SDL_WINDOWPOS_CENTERED, 800, 800,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-  SDL_GL_SetSwapInterval(1); // Enable vsync
+  SDL_GL_SetSwapInterval(0); // Enable vsync
   glewInit();
 
   glEnable(GL_DEPTH_TEST);
@@ -952,9 +952,27 @@ int main(int, char**)
 
   createShaderProgram();
   GLuint vao = createSquareVao();
-  GLuint tex = createTexture(256);
+  size_t width = 1024;  
+  GLuint tex = createTexture(width);
 
+  GLuint buf;
+  glGenBuffers(1, &buf);
+  
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buf);
+
+
+  size_t bufIndex = 0;
+  size_t height = width;
+  size_t numPixels = width * height;
+  size_t size = 4 * numPixels;
+  size_t numBufferRanges = 3;
+  size_t frameIndex = 0;
+  glBufferData(GL_PIXEL_UNPACK_BUFFER, size * numBufferRanges, 0, GL_STREAM_DRAW);
+  throwGlError("failed buffer data");
   bool done = false;
+  std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+  double frameTime = 0.d;
   while (!done)
   {
     SDL_Event event;
@@ -981,6 +999,56 @@ int main(int, char**)
 
     glBindVertexArray(vao);
     glBindTexture(GL_TEXTURE_2D, tex);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buf);
+
+
+    // copy pixels from PBO to texture object
+    // Use offset instead of ponter.
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+                    GL_BGRA, GL_UNSIGNED_BYTE, (void*)(bufIndex * size));
+    bufIndex = (bufIndex + 1) % numBufferRanges;
+    throwGlError("failed gl tex");
+
+    struct Pixel
+    {
+      unsigned char r;
+      unsigned char g;
+      unsigned char b;
+      unsigned char a;
+    };
+    Pixel* ptr = (Pixel*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 
+                                          bufIndex * size,
+                                          size, 
+                                          GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+    throwGlError("failed map buffer");
+                                          
+    if(ptr)
+    {
+      frameIndex = (frameIndex + 1) % numPixels;
+      Pixel black = {0, 0, 0, 255};
+      Pixel white = {255, 255, 255, 255};
+
+      for(size_t i = 0; i < frameIndex; i++)
+      {
+        ptr[i] = {rand() % 155 + 100, rand() % 155 + 100, rand() % 155 + 100, 255};
+      }
+      for(size_t i = frameIndex; i < numPixels; i++)
+      {
+        ptr[i] = {rand() % 155, rand() % 155, rand() % 155, 255};        
+      } 
+      
+      glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+      throwGlError("unmap buffer failed");
+    }
+    else
+    {
+      throwGlError("map buffer failed");
+    }
+
+    // it is good idea to release PBOs with ID 0 after use.
+    // Once bound with 0, all pixel operations are back to normal ways.
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     SDL_GL_SwapWindow(window);
@@ -990,6 +1058,12 @@ int main(int, char**)
     glClearColor(255, 0, 255, 255);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+    const std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+    double currentFrameTime = std::chrono::duration<double>(time2 - time1).count();
+    frameTime = currentFrameTime * 0.1d + frameTime * 0.9d;
+    std::cout << "FPS: " << 1.d / frameTime << std::endl;
+    time1 = time2;
   }
 
   SDL_GL_DeleteContext(gl_context);
