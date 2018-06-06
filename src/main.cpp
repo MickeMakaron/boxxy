@@ -62,13 +62,13 @@ void createShaderProgram()
 
     #version 130
     in vec3 vertexPosition_modelspace;
-    in vec2 uvIn;
-    out vec2 uv;
+    in vec4 colorIn;
+    out vec4 color;
     void main()
     {
       gl_Position.xyz = vertexPosition_modelspace;
       gl_Position.w = 1.0;
-      uv = uvIn;
+      color = colorIn;
     }
 
   )EOF";
@@ -76,14 +76,12 @@ void createShaderProgram()
   static const char* fsSrc = R"EOF(
 
     #version 130
-    out vec3 color;
-    in vec2 uv;
-
-    uniform sampler2D textureSampler;
+    out vec4 colorOut;
+    in vec4 color;
 
     void main()
     {
-      color = texture(textureSampler, uv).rgb;
+      colorOut = color;
     }
 
   )EOF";
@@ -96,7 +94,7 @@ void createShaderProgram()
 	glAttachShader(prog, fs);
 
   glBindAttribLocation(prog, 0, "vertexPosition_modelspace");
-  glBindAttribLocation(prog, 1, "uvIn");
+  glBindAttribLocation(prog, 1, "colorIn");
 
 	glLinkProgram(prog);
 
@@ -199,6 +197,96 @@ GLuint createTexture(size_t resolution)
   return tex;
 }
 
+struct Rectangle
+{
+  float x;
+  float y;
+  float width;
+  float height;
+};
+
+struct Color
+{
+  float r;
+  float g;
+  float b;
+  float a;
+};
+
+
+struct Vertex
+{
+  float x;
+  float y;
+  float z;
+};
+
+std::array<Vertex, 6> get_triangles(const Rectangle& rect)
+{
+  std::array<Vertex, 6> vertices;
+  vertices[0] = {rect.x, rect.y};
+  vertices[1] = {rect.x, rect.y - rect.height};
+  vertices[2] = {rect.x + rect.width, rect.y - rect.height};
+  vertices[3] = {rect.x, rect.y};
+  vertices[4] = {rect.x + rect.width, rect.y - rect.height};
+  vertices[5] = {rect.x + rect.width, rect.y};
+
+  for(Vertex& v : vertices)
+  {
+    v.z = 1.f;
+  }
+  return vertices;
+}
+
+struct Texture
+{
+  std::vector<Color> pixels;
+  size_t width;
+  size_t height;
+};
+
+void draw_rectangle(const Rectangle& rect, const Texture& texture, const Rectangle& uv_rect = {0.f, 0.f, 1.f, 1.f})
+{
+
+}
+
+void draw_rectangle(const Rectangle& rect, const Color& color)
+{
+  GLuint vao;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	std::array<Vertex, 6> vertices = get_triangles(rect);
+
+	struct ColorVertex
+	{
+    Vertex v;
+    Color c;
+	};
+  std::array<ColorVertex, 6> data;
+  for(size_t i = 0; i < data.size(); i++)
+  {
+    data[i].v = vertices[i];
+    data[i].c = color;
+  }
+
+
+	GLuint vbo;
+	glGenBuffers(1, &vbo);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(ColorVertex), data.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ColorVertex), 0);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ColorVertex), (char*)0 + sizeof(Vertex));
+
+  glDrawArrays(GL_TRIANGLES, 0, data.size());
+
+  glDeleteBuffers(1, &vbo);
+  glDeleteVertexArrays(1, &vao);
+}
+
 int main(int, char**)
 {
 
@@ -226,23 +314,23 @@ int main(int, char**)
                        SDL_WINDOWPOS_CENTERED, 800, 800,
                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-  SDL_GL_SetSwapInterval(0); // Enable vsync
+  SDL_GL_SetSwapInterval(1); // Enable vsync
   glewInit();
 
   glViewport(0, 0, 800, 800);
-  glDisable(GL_DEPTH_TEST);
+//  glDisable(GL_DEPTH_TEST);
 
 
   createShaderProgram();
-  GLuint vao = createSquareVao();
+//  GLuint vao = createSquareVao();
   size_t width = 1024;
-  GLuint tex = createTexture(width);
-
-  GLuint buf;
-  glGenBuffers(1, &buf);
-
-  glBindTexture(GL_TEXTURE_2D, tex);
-  glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buf);
+//  GLuint tex = createTexture(width);
+//
+//  GLuint buf;
+//  glGenBuffers(1, &buf);
+//
+//  glBindTexture(GL_TEXTURE_2D, tex);
+//  glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buf);
 
 
   size_t bufIndex = 0;
@@ -251,7 +339,7 @@ int main(int, char**)
   size_t size = 4 * numPixels;
   size_t numBufferRanges = 3;
   size_t frameIndex = 0;
-  glBufferData(GL_PIXEL_UNPACK_BUFFER, size * numBufferRanges, 0, GL_STREAM_DRAW);
+//  glBufferData(GL_PIXEL_UNPACK_BUFFER, size * numBufferRanges, 0, GL_STREAM_DRAW);
   throwGlError("failed buffer data");
   bool done = false;
   std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
@@ -280,68 +368,76 @@ int main(int, char**)
       }
     }
 
-    glBindVertexArray(vao);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buf);
+//    glBindVertexArray(vao);
+//    glBindTexture(GL_TEXTURE_2D, tex);
+//    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buf);
+//
+//
+//    // copy pixels from PBO to texture object
+//    // Use offset instead of ponter.
+//    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+//                    GL_BGRA, GL_UNSIGNED_BYTE, (void*)(bufIndex * size));
+//    bufIndex = (bufIndex + 1) % numBufferRanges;
+//    throwGlError("failed gl tex");
+//
+//    struct Pixel
+//    {
+//      unsigned char r;
+//      unsigned char g;
+//      unsigned char b;
+//      unsigned char a;
+//    };
+//    Pixel* ptr = (Pixel*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER,
+//                                          bufIndex * size,
+//                                          size,
+//                                          GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+//    throwGlError("failed map buffer");
+//
+//
+//
+//    if(ptr)
+//    {
+//      //memset(ptr, 0, size);
+//
+//      // frameIndex = (frameIndex + 1) % numPixels;
+//      // Pixel black = {0, 0, 0, 255};
+//      // Pixel white = {255, 255, 255, 255};
+//
+//      // for(size_t i = 0; i < frameIndex; i++)
+//      // {
+//      //   ptr[i] = {rand() % 155 + 100, rand() % 155 + 100, rand() % 155 + 100, 255};
+//      // }
+//      // for(size_t i = frameIndex; i < numPixels; i++)
+//      // {
+//      //   ptr[i] = {rand() % 155, rand() % 155, rand() % 155, 255};
+//      // }
+//
+//      glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+//      throwGlError("unmap buffer failed");
+//    }
+//    else
+//    {
+//      throwGlError("map buffer failed");
+//    }
+//
+//    // it is good idea to release PBOs with ID 0 after use.
+//    // Once bound with 0, all pixel operations are back to normal ways.
+//    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+//
+//    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-
-    // copy pixels from PBO to texture object
-    // Use offset instead of ponter.
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
-                    GL_BGRA, GL_UNSIGNED_BYTE, (void*)(bufIndex * size));
-    bufIndex = (bufIndex + 1) % numBufferRanges;
-    throwGlError("failed gl tex");
-
-    struct Pixel
-    {
-      unsigned char r;
-      unsigned char g;
-      unsigned char b;
-      unsigned char a;
-    };
-    Pixel* ptr = (Pixel*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER,
-                                          bufIndex * size,
-                                          size,
-                                          GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-    throwGlError("failed map buffer");
-
-
-
-    if(ptr)
-    {
-      //memset(ptr, 0, size);
-
-      // frameIndex = (frameIndex + 1) % numPixels;
-      // Pixel black = {0, 0, 0, 255};
-      // Pixel white = {255, 255, 255, 255};
-
-      // for(size_t i = 0; i < frameIndex; i++)
-      // {
-      //   ptr[i] = {rand() % 155 + 100, rand() % 155 + 100, rand() % 155 + 100, 255};
-      // }
-      // for(size_t i = frameIndex; i < numPixels; i++)
-      // {
-      //   ptr[i] = {rand() % 155, rand() % 155, rand() % 155, 255};
-      // }
-
-      glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
-      throwGlError("unmap buffer failed");
-    }
-    else
-    {
-      throwGlError("map buffer failed");
-    }
-
-    // it is good idea to release PBOs with ID 0 after use.
-    // Once bound with 0, all pixel operations are back to normal ways.
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    Rectangle rect;
+    rect.x = -0.5f;
+    rect.y = 0.5f;
+    rect.width = 1.f;
+    rect.height = 1.f;
+    Color color = {1.f, 0, 1.f, 1.f};
+    draw_rectangle(rect, color);
     SDL_GL_SwapWindow(window);
 
     // Rendering
-    //glClearColor(255, 0, 255, 255);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
     const std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
